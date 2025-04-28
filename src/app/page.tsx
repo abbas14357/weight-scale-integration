@@ -105,7 +105,7 @@ export default function Home() {
     };
 
     try {
-      const response = await fetch('https://server102.multi-techno.com:8443/ords/dlyan_floor_mill/weight_scale/post', {
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL!, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
