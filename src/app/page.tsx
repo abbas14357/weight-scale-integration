@@ -40,15 +40,15 @@ export default function Home() {
   // Fetch weight data from the API
   useEffect(() => {
     const fetchWeight = async (): Promise<void> => {
-      // try {
-      //   const response = await fetch('/api/weight');
-      //   const data: { weight: string } = await response.json();
-      //   setCurrentWeight(data.weight ? `${data.weight} kg` : 'Waiting for scale...');
-      // } catch (error) {
-      //   setCurrentWeight('Error connecting to scale');
-      //   console.error('Error fetching weight:', error);
-      // }
-      setCurrentWeight(`${Math.random()} kg`);
+      try {
+        const response = await fetch('/api/weight');
+        const data: { weight: string } = await response.json();
+        setCurrentWeight(data.weight ? `${data.weight} kg` : 'Waiting for scale...');
+      } catch (error) {
+        setCurrentWeight('Error connecting to scale');
+        console.error('Error fetching weight:', error);
+      }
+      // setCurrentWeight(`${Math.random()} kg`);
     };
 
     // Poll the weight endpoint every second
