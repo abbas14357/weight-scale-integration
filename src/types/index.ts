@@ -9,7 +9,7 @@ export interface VehicleInfo {
   export interface Transaction extends VehicleInfo {
     id: number;
     timestamp: string;
-    firstWeight: number;
-    secondWeight: number;
-    netWeight: number;
+    firstWeight: number  | null;
+    secondWeight: number  | null;
+    netWeight: number  | null;
   }

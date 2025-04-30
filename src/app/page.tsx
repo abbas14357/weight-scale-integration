@@ -16,6 +16,7 @@ export default function Home() {
   });
 
   // State for weights
+  const [transactionId, setTransactionId] = useState<number | null>(null);
   const [firstWeight, setFirstWeight] = useState<number | null>(null);
   const [secondWeight, setSecondWeight] = useState<number | null>(null);
   const [netWeight, setNetWeight] = useState<number | null>(null);
@@ -24,6 +25,7 @@ export default function Home() {
   // State for recording status
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordingType, setRecordingType] = useState<'first' | 'second' | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // State for transaction history
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -37,20 +39,49 @@ export default function Home() {
     }));
   };
 
+  useEffect(() => {
+    const fetchIncompleteTransactions = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_GET_URL}`);
+        const data = await response.json();
+        console.log('api get data:', data.items);
+        const mappedItems = data.items.map((item: any) => ({
+          id: item.weight_scale_id,
+          vehicleNumber: item.vehicle_no,
+          driverName: item.driver_name,
+          firstWeight: item.first_weight,
+          secondWeight: item.second_weight ?? null,
+          netWeight: item.net_weight ?? null,
+          material: item.material,
+          company: item.company_name,
+          notes: item.note,
+          timestamp: item.first_weight_time
+        }));
+        setTransactions(mappedItems); // or use a separate state like setIncompleteTransactions
+      } catch (error) {
+        console.error('Error fetching incomplete transactions:', error);
+      }
+    };
+
+    fetchIncompleteTransactions();
+  }, [refreshTrigger]);
+
+
+
   // Fetch weight data from the API
   useEffect(() => {
     const fetchWeight = async (): Promise<void> => {
-      try {
-        const response = await fetch('/api/weight');
-        const data: { weight: string } = await response.json();
-        setCurrentWeight(data.weight ? `${data.weight} kg` : 'Waiting for scale...');
-      } catch (error) {
-        setCurrentWeight('Error connecting to scale');
-        console.error('Error fetching weight:', error);
-      }
-      // setCurrentWeight(`${Math.random()} kg`);
-    };
+      // try {
+      //   const response = await fetch('/api/weight');
+      //   const data: { weight: string } = await response.json();
+      //   setCurrentWeight(data.weight ? `${data.weight} kg` : 'Waiting for scale...');
+      // } catch (error) {
+      //   setCurrentWeight('Error connecting to scale');
+      //   console.error('Error fetching weight:', error);
+      // }
 
+      setCurrentWeight('120');
+    }
     // Poll the weight endpoint every second
     const interval = setInterval(fetchWeight, 1000);
     return () => clearInterval(interval);
@@ -90,37 +121,32 @@ export default function Home() {
 
   // Save the transaction
   const saveTransaction = async (): Promise<void> => {
-    if (!vehicleInfo.vehicleNumber || firstWeight === null || secondWeight === null || netWeight === null) {
+
+    if (!vehicleInfo.vehicleNumber || firstWeight === null) {
       alert('Please fill in vehicle number and record both weights');
       return;
     }
 
-    const newTransaction: Transaction = {
-      id: Date.now(),
-      timestamp: new Date().toLocaleString(),
-      ...vehicleInfo,
-      firstWeight,
-      secondWeight,
-      netWeight
-    };
-
     try {
-      const response = await fetch(process.env.NEXT_PUBLIC_API_URL!, {
-        method: 'POST',
+      const method = transactionId ? 'PUT' : 'POST';
+      const url = transactionId ? `${process.env.NEXT_PUBLIC_API_PUT_URL}` : process.env.NEXT_PUBLIC_API_URL;
+      
+      const response = await fetch(url!, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
-          // If authentication is required, you may also need Authorization header
-          // 'Authorization': 'Bearer your-token-here'
         },
         body: JSON.stringify({
-          first_weight: firstWeight, 
+          weight_scale_id: transactionId,
+          first_weight: firstWeight,
           second_weight: secondWeight,
-          net_weight: netWeight, 
+          net_weight: netWeight,
           vehicle_no: vehicleInfo.vehicleNumber,
           driver_name: vehicleInfo.driverName,
-          company_name: vehicleInfo.company, 
+          company_name: vehicleInfo.company,
           material: vehicleInfo.material,
-          note: vehicleInfo.notes
+          note: vehicleInfo.notes,
+          second_weight_time: (secondWeight? getFormattedDateTime() : null)
         })
       });
 
@@ -134,7 +160,8 @@ export default function Home() {
           console.log('Insert successful (no response body)');
         }
         alert('Transaction saved successfully');
-        setTransactions(prev => [newTransaction, ...prev]);
+
+        setRefreshTrigger(prev => prev + 1); // Trigger re-fetch
 
         // Reset the form
         resetForm();
@@ -148,6 +175,43 @@ export default function Home() {
     }
   };
 
+  function getFormattedDateTime() {
+    const now = new Date();
+  
+    const day = String(now.getDate()).padStart(2, '0');
+  
+    const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+                    "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+    const month = months[now.getMonth()];
+  
+    const year = now.getFullYear();
+  
+    let hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+  
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // convert 0 to 12
+    const formattedHours = String(hours).padStart(2, '0');
+  
+    return `${day}/${month}/${year} ${formattedHours}:${minutes}:${seconds} ${ampm}`;
+  }
+
+  // load transaction on click
+  const loadTransactionForCompletion = (transaction: Transaction) => {
+    setVehicleInfo({
+      vehicleNumber: transaction.vehicleNumber || '',
+      driverName: transaction.driverName || '',
+      material: transaction.material || '',
+      company: transaction.company || '',
+      notes: transaction.notes || ''
+    });
+    setTransactionId(transaction.id);
+    setFirstWeight(transaction.firstWeight);
+    setSecondWeight(null);
+    setNetWeight(null);
+  };
 
   // Reset the form
   const resetForm = (): void => {
@@ -158,6 +222,7 @@ export default function Home() {
       company: '',
       notes: ''
     });
+    setTransactionId(null);
     setFirstWeight(null);
     setSecondWeight(null);
     setNetWeight(null);
@@ -290,7 +355,7 @@ export default function Home() {
               <button
                 onClick={saveTransaction}
                 className="w-full px-2 py-1 bg-green-500 text-white font-normal rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                disabled={!vehicleInfo.vehicleNumber || firstWeight === null || secondWeight === null}
+                disabled={!vehicleInfo.vehicleNumber || firstWeight === null}
               >
                 Save Transaction
               </button>
@@ -311,12 +376,15 @@ export default function Home() {
             {transactions.length === 0 ? (
               <p className="text-gray-500 text-center py-8">No transactions recorded yet</p>
             ) : (
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {transactions.map(transaction => (
-                  <div key={transaction.id} className="border border-gray-200 rounded-lg p-3">
+              <div className="flex flex-col gap-4 p-4 max-h-screen overflow-y-auto">
+                {Array.isArray(transactions) && transactions.map(transaction => (
+                  <div key={transaction.id}
+                    onClick={() => loadTransactionForCompletion(transaction)}
+                    className="cursor-pointer bg-white shadow rounded-2xl p-4 hover:shadow-lg transition">
+
                     <div className="flex justify-between items-start">
                       <div>
-                        <h3 className="font-semibold">{transaction.vehicleNumber}</h3>
+                        <h3 className="font-semibold">{transaction.id}-{transaction.vehicleNumber}</h3>
                         <p className="text-sm text-gray-500">{transaction.timestamp}</p>
                       </div>
                       <div className="text-right">
