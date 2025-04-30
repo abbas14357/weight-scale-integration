@@ -88,7 +88,7 @@ export default function Home() {
   }, []);
 
   // Record weight (first or second)
-  const recordWeight = (type: 'first' | 'second'): void => {
+  const recordWeight = (type: 'first' | 'second' | 'reset'): void => {
     const weightValue = parseFloat(currentWeight.replace(' kg', ''));
 
     if (isNaN(weightValue)) {
@@ -99,6 +99,11 @@ export default function Home() {
     if (type === 'first') {
       setFirstWeight(weightValue);
       setRecordingType('first');
+
+    }else if(type === 'reset') {
+      setSecondWeight(null);
+      setNetWeight(null); 
+    
     } else {
       setSecondWeight(weightValue);
       setRecordingType('second');
@@ -130,7 +135,7 @@ export default function Home() {
     try {
       const method = transactionId ? 'PUT' : 'POST';
       const url = transactionId ? `${process.env.NEXT_PUBLIC_API_PUT_URL}` : process.env.NEXT_PUBLIC_API_URL;
-      
+
       const response = await fetch(url!, {
         method: method,
         headers: {
@@ -146,7 +151,7 @@ export default function Home() {
           company_name: vehicleInfo.company,
           material: vehicleInfo.material,
           note: vehicleInfo.notes,
-          second_weight_time: (secondWeight? getFormattedDateTime() : null)
+          second_weight_time: (secondWeight ? getFormattedDateTime() : null)
         })
       });
 
@@ -177,24 +182,24 @@ export default function Home() {
 
   function getFormattedDateTime() {
     const now = new Date();
-  
+
     const day = String(now.getDate()).padStart(2, '0');
-  
+
     const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-                    "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+      "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
     const month = months[now.getMonth()];
-  
+
     const year = now.getFullYear();
-  
+
     let hours = now.getHours();
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const seconds = String(now.getSeconds()).padStart(2, '0');
-  
+
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12;
     hours = hours ? hours : 12; // convert 0 to 12
     const formattedHours = String(hours).padStart(2, '0');
-  
+
     return `${day}/${month}/${year} ${formattedHours}:${minutes}:${seconds} ${ampm}`;
   }
 
@@ -341,6 +346,14 @@ export default function Home() {
                 >
                   {isRecording && recordingType === 'second' ? 'Recorded!' : 'Record Second'}
                 </button>
+                {secondWeight !== null && (
+                  <button
+                    onClick={() => recordWeight('reset')}
+                    className="text-red-500 hover:underline text-sm"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
             </div>
 
