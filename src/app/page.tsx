@@ -3,6 +3,7 @@
 import { useState, useEffect, ChangeEvent } from 'react';
 import { VehicleInfo, Transaction } from '@/types';
 import Navbar from '@/components/navbar';
+import { debounce } from 'lodash';
 
 
 export default function Home() {
@@ -100,10 +101,10 @@ export default function Home() {
       setFirstWeight(weightValue);
       setRecordingType('first');
 
-    }else if(type === 'reset') {
+    } else if (type === 'reset') {
       setSecondWeight(null);
-      setNetWeight(null); 
-    
+      setNetWeight(null);
+
     } else {
       setSecondWeight(weightValue);
       setRecordingType('second');
@@ -123,6 +124,8 @@ export default function Home() {
       setRecordingType(null);
     }, 2000);
   };
+
+
 
   // Save the transaction
   const saveTransaction = async (): Promise<void> => {
@@ -179,6 +182,8 @@ export default function Home() {
       alert('Error saving transaction');
     }
   };
+
+  const debouncedSaveTransaction = debounce(saveTransaction, 1000); // 1000ms delay
 
   function getFormattedDateTime() {
     const now = new Date();
@@ -322,10 +327,14 @@ export default function Home() {
                 </p>
                 <button
                   onClick={() => recordWeight('first')}
-                  className={`mt-2 w-full px-2 py-1 rounded-md text-white font-normal ${isRecording && recordingType === 'first'
-                    ? 'bg-green-500'
-                    : 'bg-blue-500 hover:bg-blue-600'
+                  className={`mt-2 w-full px-2 py-1 rounded-md text-white font-normal 
+                    ${transactionId !== null
+                      ? 'bg-gray-300 cursor-not-allowed'
+                      : isRecording && recordingType === 'first'
+                        ? 'bg-green-500'
+                        : 'bg-blue-500 hover:bg-blue-600'
                     }`}
+                  disabled={transactionId !== null}
                 >
                   {isRecording && recordingType === 'first' ? 'Recorded!' : 'Record First'}
                 </button>
@@ -338,9 +347,12 @@ export default function Home() {
                 </p>
                 <button
                   onClick={() => recordWeight('second')}
-                  className={`mt-2 w-full px-2 py-1 rounded-md text-white font-normal ${isRecording && recordingType === 'second'
-                    ? 'bg-green-500'
-                    : 'bg-blue-500 hover:bg-blue-600'
+                  className={`mt-2 w-full px-2 py-1 rounded-md text-white font-normal 
+                    ${firstWeight === null
+                      ? 'bg-gray-300 cursor-not-allowed'
+                      : isRecording && recordingType === 'second'
+                        ? 'bg-green-500'
+                        : 'bg-blue-500 hover:bg-blue-600'
                     }`}
                   disabled={firstWeight === null}
                 >
@@ -366,7 +378,7 @@ export default function Home() {
 
             <div className="grid grid-cols-2 gap-4">
               <button
-                onClick={saveTransaction}
+                onClick={debouncedSaveTransaction}
                 className="w-full px-2 py-1 bg-green-500 text-white font-normal rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                 disabled={!vehicleInfo.vehicleNumber || firstWeight === null}
               >
@@ -429,7 +441,16 @@ export default function Home() {
 
       <footer className="py-4 text-center text-gray-500 text-sm">
         <p>© {new Date().getFullYear()} Vehicle Weight Management System</p>
+        <p> Visit our website: <a
+          href="https://multi-techno.com"
+          className="text-blue-500 hover:underline ml-1"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          multi-techno.com
+        </a> </p>
       </footer>
+
     </div>
   );
 }
